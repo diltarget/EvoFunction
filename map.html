@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<canvas id="myCanvas" width="1900" height="1040">
+Your browser does not support the HTML5 canvas tag.</canvas>
+<br>
+<button onclick="step=1;setMod();populate()">RESET</button>
+Mutation Rate
+<input id="rate" onchange="data()" value=1></input>
+Mutation Differential
+<input id="dif" onchange="data()" value=0.001></input>
+Fitness Function Challenge
+<input id="cha" onchange="data()" value=1 />
+<br><button onclick="destable()">Destabilize</button>
+<script>
+	var list = [1,2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,
+	127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,
+	283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,433,439,443,449,457,461,463];
+	
+	var mod = [];
+	var mutRate = 1;
+	var mutDif = 0.001;
+	var fitCha = 1;
+	
+	function data(){
+		mutRate = parseFloat(document.getElementById("rate").value) || mutRate;
+		mutDif = parseFloat(document.getElementById("dif").value) || mutDif;
+		fitCha = parseFloat(document.getElementById("cha").value) || fitCha;
+	}	
+	
+	function destable(){
+		var d = mutDif;
+		document.getElementById("dif").value=1;
+		mutDif=1;
+		setTimeout(function(){document.getElementById("dif").value = d;mutDif=d;lowb=gscore},2000)
+	}
+	
+	//list = [0,1,4,9,16,25,36,49,8*8,9*9,100,121];
+	var species = JSON.parse(localStorage.getItem("species"));
+	var myGeneration = parseInt(localStorage.getItem("gen"));
+	//console.log(species);
+	species || populate();
+	myGeneration || (myGeneration = 0);
+	
+	//console.log(fitness(species[0]));
+	var step = Math.max(parseInt(localStorage.getItem("step")),1);
+	step || (step=1)
+	//setMod();
+	var time = Date.now()/1000;
+	var adapt = 1;
+	//populate();
+	function rand(){
+		var num = Math.random();
+		if(num == 0 || num ==1){
+			return rand();
+		}
+		return Math.log((1-num)/num);
+	}
+	
+	Array.prototype.clone = function() {
+		return this.slice(0);
+	};
+	
+	function setMod(){
+		mod = [];
+		mod = (Array.apply(null,Array(step+4)).map(function(){
+			return 1+Math.random();
+		}));
+	}
+	
+	function populate(){
+		myGeneration=0;
+		species = [];
+		for(var i = 0; i<1000; i++){
+			species.push(Array.apply(null, Array(4)).map(function() {
+				return rand();
+			}))
+		}
+	}
+	
+	function calc(a,x){
+		var val = 0;
+		for(var p = 0; p<a.length;p+=4){
+			val+=Math.pow(x,p/4)*(a[p]+(a[p+1]*Math.sin((a[p+2]*x)+a[p+3])))
+		}
+		return val;
+	}
+	
+	function select(){
+		var args = Array.from(arguments);
+		return args[parseInt(args.length*Math.random())]
+	}
+	
+	function mend(x){
+		return Math.pow(x,x);
+	}
+	
+	function fitness(a){
+		var p = 0;
+		//var l = mod[0];
+		var lim = Math.min(step,list.length-1);
+		for(var io = 1; io < lim;io++){
+			var t =Math.abs(calc(a,io)-list[io])*fitCha 
+			p+= (Math.exp(t)-Math.E)
+		}
+		
+		return (p/2)+((a.length/4)*Math.exp((a.length-Math.max(step,4))/4))//Math.min(s,o,p);
+		//return Math.min(s,o,p)//*(a.length>step?Math.pow(2,(a.length-step)/4):1)//*Math.pow(1.01,(a.length-step+1))
+	}
+	
+	function classif(a){
+		var s = "";
+		for(var t = 0; t < a.length; t++){
+			var rt=(a[t].toString(27).replace(/\.|\-/g,"").replace(/^0+/,""));
+			if(rt.length==0){
+				s+=" ";
+			}else{
+				var f = rt.charCodeAt(0); 
+				if(f>=97){
+					s+=String.fromCharCode(9+f);
+				}else{
+					s+=String.fromCharCode(48+f);
+				}
+			}
+		}
+		
+		return s;
+	}
+	
+	function uppa(n){
+		if(parseInt(n)){
+			return String.fromCharCode(97+parseInt(n));
+		}
+		return String.fromCharCode(n.charCodeAt(0)+10);
+	}
+			
+	
+	function listout(){
+		var listp = [];
+		for(var u = 0; u < list.length; u++){
+			var valp =calc(best,u);
+			if(parseInt(valp) % 2 == 0){
+				listp.push(parseInt(valp)+1);
+			}else{
+				listp.push(parseInt(valp));
+			}
+		}
+		return listp;
+	}
+	
+	function draw(a){
+		var maxum = list.reduce(function(acc,curr,i){
+			if(i>step)return acc;
+			return Math.max(acc,curr);
+		})
+		var minum = list.reduce(function(acc,curr){
+			return Math.min(acc,curr);
+		})
+		var c = document.getElementById("myCanvas");
+		var ctx = c.getContext("2d");
+		ctx.clearRect(0, 0, c.width, c.height);
+		var domain = Math.min(step,list.length);
+		ctx.font = "30px Arial";
+		ctx.fillText((gscore)-Math.max(step/4,1),10,50);
+		ctx.fillText((a.length)/4,10,100);
+		ctx.fillText((list.length-step),10,150);
+		ctx.fillText("GEN: "+(myGeneration),10,200);
+		ctx.fillText((lappz),10,250);
+		ctx.fillText(classif(a).toString().replace(",",":"),10,300);
+		//ctx.fillText(30+step+(10*Math.sqrt(Math.max(init-gscore,0))*Math.log(1+Math.max(init-gscore,0)))-(Date.now()/1000)+time,10,200)
+		//var domain = Math.min(step,list.length);
+		var dist = (domain)/c.width;
+		var ran = c.height/(maxum+1);
+		
+		ctx.moveTo(0,0);
+		for(var ex = 0; ex < c.width; ex++){
+			var val = calc(a,dist*ex)*ran;
+			ctx.lineTo(ex,c.height-val);
+		}
+		ctx.stroke();
+		
+		for(var y = 1; y < domain; y++){
+			ctx.beginPath();
+			ctx.arc(y/dist, c.height-(ran*list[y]), 2, 0, 2 * Math.PI, true);
+			ctx.fill();
+		}
+		
+	}
+	
+	function optim(thing){
+		for(var kin = 0; kin < thing.length; kin++){
+			var ne = thing.clone();
+			ne[kin]+=rand()/100;
+			if(fitness(ne) > fitness(thing)){
+				thing=ne.clone();
+			}
+		}
+		return thing;
+	}					
+	
+	var best = [];
+	
+	function test(){
+		myGeneration++;
+		var m = [];
+		var who = {"":0};
+		var top = "";
+		for(var rt = 0; rt < species.length; rt++){
+			/*var type = classif(species[rt]);
+			who[type] || (who[type] = 0);
+			who[type]++;
+			if(who[top]<who[type]){
+				top=type;
+			}*/
+			m.push([rt,fitness(species[rt])]);
+		}
+		//console.log(top);
+		m.sort(function(a,b){return (a[1]-b[1])});
+		worst = species[m[m.length-1][0]].clone();
+		best = species[m[0][0]].clone();
+		//console.log(m);
+		var next = [];
+		//next.push(optim(best));
+		//next.push(best);
+		//next.push(species[m[0][0]].clone());
+		for(var d = 0; d < 1000; d++){
+			var n = parseInt(Math.random()*Math.random()*species.length);
+				
+			var me = species[m[n][0]].clone();
+			//next.push(species[m[n][0]].clone());
+			
+			//me = species[m[n][0]].clone();
+			//me[parseInt(Math.random()*me.length)] += rand();
+			//next.push(me);
+
+			/*if(Math.random()<0.05){
+				me = species[m[n][0]].clone();
+				next.push(optim(me))
+			}*/
+			var flag = true
+			while(flag || Math.random()<0.5){
+				flag = false;
+				me = species[m[n][0]].clone();
+				var rounds = 1;
+				while(Math.random()<mutRate*Math.random()*(me.length/4)/rounds){
+					rounds++;
+					if(Math.random()<0.1){
+						me[parseInt(Math.random()*me.length)] *= rand();
+					}else{
+						me[parseInt(Math.random()*me.length)] += mutDif*rand();
+					}
+				}
+				next.push(me)
+			}
+			
+			if(/*me.length<step-4 &&*/Math.random()<0.05){
+			me = species[m[n][0]].clone();
+			for(var t =0; t<4;t++){
+				me.push(Math.random()<0.5?0:rand());
+			}
+			next.push(me)
+			}
+			if(me.length > 4 && Math.random()<0.05){
+				me = species[m[n][0]].clone();
+				
+				me.splice((me.length-4),4);
+				
+				next.push(me);
+			}
+		}
+		species = next;
+		return m[0][1];
+	}
+	var gscore = 0;
+	var init = 0;
+	var loopz = 0;
+	var lowb = 0;
+	var point = 0;
+	var poinc = 0;
+	var lappz = 0;
+	function loop(){
+		
+		gscore = test();
+		var domain = Math.min(step,list.length);
+		//console.log(gscore,list[step]);
+		
+		/*if((Date.now()/1000)-time > step +30+(10*Math.sqrt(Math.max(init-gscore,0))*Math.log(1+Math.max(init-gscore,0)))){
+			time = Date.now()/1000;
+			step = step<1?1:step-1
+			
+			console.log(adapt);
+		}*/
+		//console.log(gscore)
+		
+		if(lowb<= 0 || gscore < lowb){
+			lowb=gscore;
+			lappz=0;
+		}else{
+			lappz++;
+			if(lappz>1000){
+				lappz=0;
+				destable();
+			}
+		}
+		
+		if(list[step] && gscore <= Math.max(step/4,1)){
+			
+			lowb=0;
+			console.log(calc(best,step),list[step],Math.abs(list[step]-calc(best,step))/list[step]);
+			console.log(loopz)
+			
+			poinc++;
+			point+=calc(best,1.5);
+			console.log(point/poinc)
+			console.log(classif(best));
+			gscore = test();
+			init = gscore;
+			time = Date.now()/1000;
+			draw(best);
+			step++;
+			adapt=Math.max(adapt,step);
+			loopz=0;
+			//setMod();
+			setTimeout(loop,1000);
+		}else{
+			loopz++;
+			draw(best);
+			setTimeout(loop,0);
+		}
+	}
+	//populate();
+	loop();
+	
+	myloop = setInterval(function(){
+		localStorage.setItem("species",JSON.stringify(species));
+		localStorage.setItem("step",step||1)
+		localStorage.setItem("gen",myGeneration);
+		//console.log(species);
+	},1000);
+
+</script>
+
+</body>
+</html>
